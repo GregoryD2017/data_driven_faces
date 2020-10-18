@@ -1,0 +1,215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    max-width: 75%;
+    height: auto;
+    width: auto\9;
+    margin: auto;
+    text-align: left;
+    font-weight: 200;
+	font-family: 'Roboto', sans-serif;
+    color: #121212;
+  }
+
+  img {
+  margin: auto;
+  display: block;
+  max-width: 75%;
+  height: auto;
+  width: auto\9;
+}
+video {
+  margin: auto;
+  display: block;
+  max-width: 60%;
+  height: auto;
+  width: auto\9;
+}
+
+code {
+  font-family: Consolas,"courier new";
+  color: crimson;
+  background-color: #eee;
+  padding: 2px;
+
+}
+
+
+
+  h1, h2, h3, h4 {
+    font-family: 'Playfair Display', serif ;
+  }
+  p.medium {line-height : 1.75;}
+  ol{display: table; margin: 0 auto;}
+  p.codeblock{text-indent: 5em;}
+  table {border-collapse: collapse;}
+</style>
+
+<title>Data Driven Methods</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Playfair+Display|Roboto&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+<body>
+
+<h1 align="middle">Data Driven Methods</h1>
+<h2 align="middle">CS 194-26: Intro to Computer Vision and Computational Photography</h2>
+<h2 align="middle">Gregory Du, CS194-26-aec</h2>
+<br>
+
+<h2 align="Center">Overview</h2>
+<p class = "medium">
+This project explores the way in which we can use facial data to examine key points about the population mean
+and how we can use that information to better understand organic geometry. I haven't used my own face below
+just out of personal preference.
+</p>
+
+<br>
+
+<h2 align="Center">Defining Correspondences</h2>
+<p class="medium">
+The first part of this project is pretty straightforward. We use <code>ginput</code> to 
+define specific points on the face that we will use as keypoints later. These key-points are then 
+dumped into a json file for safekeeping. We're going to want to compute the average face between
+our source and target images for which we just tracked keypoints, which we will describe in detail below. 
+</p>
+<br>
+<h2 align="Center">Computing the Midway Face</h2>
+<p class="medium">
+To compute the midway face, we can simply first average the keypoints between our source and target images.
+Assume that we've already loaded the keypoints from the json files we saved earlier. Essentially at this point, we've averaged
+the shape vector of the faces, but not the color vector. Without loss of generality, we'll show a concrete example of retrieving the color vector
+for the source image. First, we generate the Delaunay triangulation of the average shape, and for each pair of 
+corresponding triangles in the average shape, and the source image, we can use a system of linear equations to 
+determine the affine transformation matrix. For each point in each triangle in the average shape, we can thus
+inverse warp that point to the source triangle, and sample its color, basically texture mapping the average
+triangulation based on the source triangulation. We do the exact same process for the target triangle (compute
+affine transformation matrix, texture map the average shape triangles based on corresponding inverse warped points
+in the target triangle). Since we want to average the faces, not add them, for each average shape triangle, we add 
+0.5 times the source mapped color, and 0.5 times the target mapped color to get the average color between these two faces! Take a look at the visual appearance of the midway face below, where the source image is Taylor Swift, and
+the target image is Anne Hathaway.
+</p>
+<div align = "middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+          <img src="./website_images/morph/taylor.jpg" align="middle" width="400"/>
+          <figcaption align="center">Taylor Swift</figcaption>
+        </td>
+        <td>
+          <img src="./website_images/morph/midway.png" align="middle" width="400"/>
+          <figcaption align="center">Midway Image</figcaption>
+        </td>
+        <td>
+            <img src="./website_images/morph/anne.jpg" align="middle" width="400"/>
+            <figcaption align="center">Anne Hathaway</figcaption>
+        </td>
+      </tr>
+    </table>
+</div>
+<br>
+<h2 align="Center">Morph Sequence</h2>
+<p class="medium">
+It's interesting to note that when we took the average of the shape and color vectors, we equally weighted
+the source and the target image, in other words, the proportion of the source and target image in both the shape
+and color vectors was the same. If we were to change this proportional weighting, we would see a higher proportion
+of Taylor Swift or Anne Hathaway respectively. In other words, we can freely linearly interpolate between the source and target
+images for both the shape and color vectors. If we do this over time, essentially we can generate an animation that
+morphs between the source and target image (hence the title: morph sequence). We'll constantly increment
+the proportion for both the shape and color lerp on a per-frame basis. The value of this delta will simply 
+be <code>1 / (FPS - 1)</code>. You can see the morph sequence below.
+</p>
+<div align = "middle">
+    <video source src="./website_images/morph/taylor_swift_2_anne_hathaway.mp4" type="video.mp4" controls> </video>
+</div>
+<br>
+<h2 align="Center">Population Averages</h2>
+<p class="medium">
+Of course averages pertain to more than just 1 source and 1 target image. Any number of images can contribute
+to a population average, and the process for computing the population average is nearly identical to the one described
+above. The only difference is in the weight in combination. Remember when we averaged 2 images, the proportion we used 
+to combine the source and target images for both the shape and color vectors was <code>1/2</code>. Naturally, in 
+a population with <code>n</code> faces, each face will contribute proportionately <code>1/n</code> to both the 
+color and shape vectors instead. Take a look at the average face of the following 
+<a href="http://www2.imm.dtu.dk/~aam/datasets/datasets.html" target=_blank>Danish study.</a>
+</p>
+<div align = "middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+            <img src="./website_images/avg_faces/average_face.png" align="middle" width="600"/>
+            <figcaption align="center">Danish Study: Average Face</code></figcaption>
+        </td>
+      </tr>
+    </table>
+</div>
+<p class="medium">We can also take a look at some morph sequences which swap individual faces to the 
+    average Danish face:
+</p>
+<br>
+<video source src="./website_images/avg_faces/danish_male_avg_morph.mp4" type="video.mp4" controls> </video>
+<br>
+<video source src="./website_images/avg_faces/danish_female_avg_morph.mp4" type="video.mp4" controls> </video>
+<br>
+<p class="medium">Finally, we can see what happens if we morph a face from a similar study from 
+    <a href="https://fei.edu.br/~cet/facedatabase.html" target=_blank>Brazil</a> to the average Danish 
+    face shape, and similarly if we try to morph the average Danish face shape to the face shape of the researcher in the Brazil study.
+</p>
+<div align = "middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+            <img src="./website_images/avg_faces/brazil_to_danish.png" align="middle" width="600"/>
+            <figcaption align="center">Brazil Study Researcher Morphed to Mean Danish Face Shape</code></figcaption>
+        </td>
+        <td>
+            <img src="./website_images/avg_faces/danish_to_brazil.png" align="middle" width="600"/>
+            <figcaption align="center">Mean Danish Face Morphed to Brazil Study Researcher Face Shape</code></figcaption>
+        </td>
+      </tr>
+    </table>
+</div>
+<br>
+<h2 align="Center">Caricatures</h2>
+<p class="medium">
+Given we now have average population faces, we can think about, and extrapolate upon the deltas that exist 
+between any given face and the average face for the population. In other words, for some face, we can compute 
+the delta between the given face and the average population face, and extrapolate from the given face by adding
+some constant multiple of the delta. This works much better for images that were used to generate the mean, since 
+usually these images have facial shapes that more closely align with the mean face, and the background colors match.
+Different backgrounds can cause some discoloration, which we can see below. The example on the left comes from
+a caricature based on a Brazilian male in the research group and the average Danish male face which we computed,
+while the image on the right comes from a caricature based on a Danish researcher we saw earlier, and the 
+average Danish male face.
+</p>
+<br>
+<div align = "middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+            <img src="./website_images/caricatures/brazil_study_caricature.png" align="middle" width="600"/>
+            <figcaption align="center">Brazil Study Caricature (note the discoloration)</code></figcaption>
+        </td>
+        <td>
+            <img src="./website_images/caricatures/danish_study_caricature.png" align="middle" width="600"/>
+            <figcaption align="center">Danish Study Caricature</code></figcaption>
+        </td>
+      </tr>
+    </table>
+</div>
+
+<h2 align="Center">Drawn Faces</h2>
+<p class="medium">
+    To demonstrate a more comprehensive example of data driven morphing, we can generate a small music video morphing 
+    between characters from the show <i>Dragon Ball Z</i>. We've applied the same exact technique here as we did 
+    when morphing between Taylor Swift and Anne Hathaway, except we've chained multiple morphs together.
+</p>
+<div align = "middle">
+    <video source src="./website_images/music_video/dragonballz_final.mp4" type="video.mp4" controls> </video>
+</div>
+
+</body>
+</html>
